@@ -70,5 +70,14 @@ ctecs_obj <-FindClusters(ctecs_obj, resolution= 0.5)
 
 #Run UMAP from clusters
 ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10)
+DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
+```
+
+```{r}
+saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/analyses/human-integrated-datasets-analysis.rds")
+```
+```{r}
+cluster3_markers <-FindMarkers(ctecs_obj, ident.1 = 3)
+head(cluster3_markers, n = 10)
 ```
 
