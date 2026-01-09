@@ -1,0 +1,45 @@
+x---
+title: 'human-integrated-datasets-cTECs-analysis'
+output: html_document
+date: "2026-01-07"
+---
+
+```{r setup, include=FALSE}
+library(Seurat)
+library(ggplot2)
+library(SeuratData)
+```
+
+```{r}
+#Open seurat object
+ctecs_obj <- readRDS("/Users/vo/projects/heterogeneity_ctec/data/human_integrated_datasets_updated_all_genes_no_zc_09172025_seu_ctecs.rds")
+```
+
+
+```{r}
+ctecs_obj <- FindVariableFeatures(ctecs_obj, selection.method = 'vst', nfeatures = 2000)
+
+# Identify the 10 most highly variable genes
+top10 <- head(VariableFeatures(ctecs_obj), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(ctecs_obj)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot1 + plot2
+```
+
+```{r}
+all.genes <- rownames(ctecs_obj)
+#scaling the data
+ctecs_obj <- ScaleData(ctecs_obj, features = all.genes)
+#Run UMAP and PCA on the cTECs datasets
+ctecs_obj <- RunPCA(ctecs_obj, features = VariableFeatures(object = ctecs_obj))
+ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10 )
+```
+
+
+```{r} 
+#exploration of the primary sources of heterogeneity in a dataset
+DimHeatmap(ctecs_obj, dims = 1, cells = 500, balanced = TRUE)
+```
+

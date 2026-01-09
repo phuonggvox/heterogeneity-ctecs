@@ -1,0 +1,9 @@
+*
+!*/
+!heterogeneity-ctecs.Rproj
+!README.md
+!.gitignore
+!analyses/**
+!metadata/**
+!envs/**
+.Rproj.user
