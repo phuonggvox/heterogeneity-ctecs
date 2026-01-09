@@ -36,15 +36,16 @@ plot1 + plot2
 
 ```{r}
 assay <- DefaultAssay(ctecs_obj)
-all_genes <- rownames(GetAssayData(ctecs_obj, layer="data"))
-#all_genes <-  sub(".*\\.", "", rowname)
-#all_genes <- make.unique(all_genes)
+rownames(ctecs_obj)
+
+rownames(ctecs_obj) <-  sub(".*\\.", "", rownames(ctecs_obj))
+new_features <- rownames(ctecs_obj)[!(rownames(ctecs_obj) %in% rownames(ctecs_obj)[duplicated(rownames(ctecs_obj))])]
+ctecs_obj <- ctecs_obj[new_features,]
 #all_genes
 #head(all.genes)
-#ctecs_obj <-RenameFeatures(ctecs_obj, all_genes)
 
 #scaling the data
-ctecs_obj <- ScaleData(ctecs_obj, features = all_genes)
+ctecs_obj <- ScaleData(ctecs_obj, features = rownames(ctecs_obj))
 ```
 
 
@@ -77,7 +78,14 @@ DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
 saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/analyses/human-integrated-datasets-analysis.rds")
 ```
 ```{r}
-cluster3_markers <-FindMarkers(ctecs_obj, ident.1 = 3)
-head(cluster3_markers, n = 10)
+install.packages('devtools')
+#devtools::install_github('immunogenomics/presto')
+#Find all markers for all clusters
+#all.markers <- FindAllMarkers(object = ctecs_obj)
+
+#head(x = all.markers)
+markers_cluster1 <- FindMarkers(object=ctecs_obj, ident.1 =1)
+head(x = markers_cluster1)
+
 ```
 
