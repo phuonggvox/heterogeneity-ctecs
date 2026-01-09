@@ -8,6 +8,8 @@ date: "2026-01-07"
 library(Seurat)
 library(ggplot2)
 library(SeuratData)
+library(readr)
+library(dplyr)
 ```
 
 ```{r}
@@ -75,7 +77,7 @@ DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
 ```
 
 ```{r}
-saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/analyses/human-integrated-datasets-analysis.rds")
+saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/data/human-integrated-datasets-analysis.rds")
 ```
 ```{r}
 install.packages('devtools')
@@ -87,5 +89,53 @@ install.packages('devtools')
 markers_cluster1 <- FindMarkers(object=ctecs_obj, ident.1 =1)
 head(x = markers_cluster1)
 
+```
+```{r}
+all.markers <- FindAllMarkers(object = ctecs_obj)
+
+```
+
+```{r}
+VlnPlot(ctecs_obj, features = c("HBG2","CDKN1C","LINC02605","ENSG00000289474","C3","CDKN1C"))
+
+```
+
+```{r}
+all_markers <- read_csv("data/all_markers.csv")
+View(all_markers)
+
+#ctecs_pos_markers <- FindAllMarkers(ctecs_obj, only.pos = TRUE)
+all_markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)%>%
+    slice_head(n=10) %>%
+    ungroup() -> top10
+top10
+top10_cluster0 <- subset(top10, cluster == "0")
+top10_cluster0$gene_name <-sub(".*\\.", "", top10_cluster0$gene)
+#class(ctecs_obj)
+top10_cluster0$gene_name
+#ctecs_obj$gene
+VlnPlot(ctecs_obj, features = top10_cluster0$gene_name, slot = "counts", log = TRUE)
+```
+```{r}
+top10_cluster1 <- subset(top10, cluster == "1")
+top10_cluster1$gene_name <-sub(".*\\.", "", top10_cluster1$gene)
+#class(ctecs_obj)
+top10_cluster1$gene_name
+#ctecs_obj$gene
+VlnPlot(ctecs_obj, features = top10_cluster1$gene_name, , slot = "counts", log = TRUE)
+```
+
+
+```{r}
+top10_cluster2 <- subset(top10, cluster == "2")
+top10_cluster2$gene_name <-sub(".*\\.", "", top10_cluster2$gene)
+top10_cluster2$gene_name
+VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log = TRUE)
+```
+
+```{r}
+DoHeatmap(ctecs_obj, features = top10$gene) + NoLegend()
 ```
 
