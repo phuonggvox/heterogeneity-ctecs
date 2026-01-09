@@ -15,6 +15,12 @@ library(SeuratData)
 ctecs_obj <- readRDS("/Users/vo/projects/heterogeneity_ctec/data/human_integrated_datasets_updated_all_genes_no_zc_09172025_seu_ctecs.rds")
 ```
 
+```{r}
+#head(rownames(ctecs_obj))
+#genes_row <- sub(".*\\.", "", rownames(ctecs_obj))
+#ctecs_obj_2 <- 
+```
+
 
 ```{r}
 ctecs_obj <- FindVariableFeatures(ctecs_obj, selection.method = 'vst', nfeatures = 2000)
@@ -29,17 +35,40 @@ plot1 + plot2
 ```
 
 ```{r}
-all.genes <- rownames(ctecs_obj)
+assay <- DefaultAssay(ctecs_obj)
+all_genes <- rownames(GetAssayData(ctecs_obj, layer="data"))
+#all_genes <-  sub(".*\\.", "", rowname)
+#all_genes <- make.unique(all_genes)
+#all_genes
+#head(all.genes)
+#ctecs_obj <-RenameFeatures(ctecs_obj, all_genes)
+
 #scaling the data
-ctecs_obj <- ScaleData(ctecs_obj, features = all.genes)
-#Run UMAP and PCA on the cTECs datasets
+ctecs_obj <- ScaleData(ctecs_obj, features = all_genes)
+```
+
+
+```{r}
+#Run initial UMAP and PCA on the cTECs datasets
 ctecs_obj <- RunPCA(ctecs_obj, features = VariableFeatures(object = ctecs_obj))
 ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10 )
+```
+
+```{r}
+VizDimLoadings(ctecs_obj, dims = 1:2, reduction = "pca")
 ```
 
 
 ```{r} 
 #exploration of the primary sources of heterogeneity in a dataset
-DimHeatmap(ctecs_obj, dims = 1, cells = 500, balanced = TRUE)
+DimHeatmap(ctecs_obj, dims = 1, cells = 1000, balanced = TRUE)
+```
+```{r}
+#Find neighbors
+ctecs_obj <-FindNeighbors(ctecs_obj, dims= 1:10)
+ctecs_obj <-FindClusters(ctecs_obj, resolution= 0.5)
+
+#Run UMAP from clusters
+ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10)
 ```
 
