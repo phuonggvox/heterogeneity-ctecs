@@ -18,13 +18,6 @@ ctecs_obj <- readRDS("/Users/vo/projects/heterogeneity_ctec/data/human_integrate
 ```
 
 ```{r}
-#head(rownames(ctecs_obj))
-#genes_row <- sub(".*\\.", "", rownames(ctecs_obj))
-#ctecs_obj_2 <- 
-```
-
-
-```{r}
 ctecs_obj <- FindVariableFeatures(ctecs_obj, selection.method = 'vst', nfeatures = 2000)
 
 # Identify the 10 most highly variable genes
@@ -38,7 +31,7 @@ plot1 + plot2
 
 ```{r}
 assay <- DefaultAssay(ctecs_obj)
-rownames(ctecs_obj)
+#rownames(ctecs_obj)
 
 rownames(ctecs_obj) <-  sub(".*\\.", "", rownames(ctecs_obj))
 new_features <- rownames(ctecs_obj)[!(rownames(ctecs_obj) %in% rownames(ctecs_obj)[duplicated(rownames(ctecs_obj))])]
@@ -79,20 +72,13 @@ DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
 ```{r}
 saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/data/human-integrated-datasets-analysis.rds")
 ```
+
 ```{r}
-install.packages('devtools')
-#devtools::install_github('immunogenomics/presto')
-#Find all markers for all clusters
-#all.markers <- FindAllMarkers(object = ctecs_obj)
+#install.packages('devtools')
 
 #head(x = all.markers)
 markers_cluster1 <- FindMarkers(object=ctecs_obj, ident.1 =1)
 head(x = markers_cluster1)
-
-```
-```{r}
-all.markers <- FindAllMarkers(object = ctecs_obj)
-
 ```
 
 ```{r}
@@ -101,7 +87,7 @@ VlnPlot(ctecs_obj, features = c("HBG2","CDKN1C","LINC02605","ENSG00000289474","C
 ```
 
 ```{r}
-all_markers <- read_csv("data/all_markers.csv")
+all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers.csv")
 View(all_markers)
 
 #ctecs_pos_markers <- FindAllMarkers(ctecs_obj, only.pos = TRUE)
@@ -136,6 +122,48 @@ VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log =
 ```
 
 ```{r}
+top10_cluster3 <- subset(top10, cluster == "3")
+top10_cluster3$gene_name <-sub(".*\\.", "", top10_cluster3$gene)
+top10_cluster3$gene_name
+VlnPlot(ctecs_obj, features = top10_cluster3$gene_name, , slot = "counts", log = TRUE)
+```
+
+```{r}
+top10_cluster2 <- subset(top10, cluster == "2")
+top10_cluster2$gene_name <-sub(".*\\.", "", top10_cluster2$gene)
+top10_cluster2$gene_name
+VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log = TRUE)
+```
+```
+
+
+```{r}
+for (cl in 0:13){
+  top10_clustercl <- subset(top10, cluster == cl)
+  top10_clustercl$gene_name <-sub(".*\\.", "", top10_clustercl$gene)
+  top10_clustercl$gene_name
+  VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log = TRUE)
+
+}
+```
+
+
+```{r}
 DoHeatmap(ctecs_obj, features = top10$gene) + NoLegend()
+```
+
+```{r}
+#Pan gene markers
+pan_tec <- c("EPCAM", "FOXN1", "KRT8")
+#plot Multiple markers
+FeaturePlot(ctecs_object, 
+            features = c("PSMB11", "PRSS16", "AIRE", "CCL21"),
+            ncol = 2,
+            pt.size = 0.5)
+
+
+#cTEC-specific markers
+ctec_markers <- c("PSMB11", "PRSS16", "LY75", "CLDN3", "CLDN4", "IL7", "DLL4")
+
 ```
 
