@@ -29,73 +29,31 @@ plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
 plot1 + plot2
 ```
 
-```{r}
-assay <- DefaultAssay(ctecs_obj)
-#rownames(ctecs_obj)
 
+```{r}
+#Initial data processing
+assay <- DefaultAssay(ctecs_obj)
+#subset rownames to keep only gene names and get rid of the ensembles
 rownames(ctecs_obj) <-  sub(".*\\.", "", rownames(ctecs_obj))
 new_features <- rownames(ctecs_obj)[!(rownames(ctecs_obj) %in% rownames(ctecs_obj)[duplicated(rownames(ctecs_obj))])]
+#head(new_features)
 ctecs_obj <- ctecs_obj[new_features,]
-#all_genes
-#head(all.genes)
 
 #scaling the data
 ctecs_obj <- ScaleData(ctecs_obj, features = rownames(ctecs_obj))
 ```
-
 
 ```{r}
 #Run initial UMAP and PCA on the cTECs datasets
 ctecs_obj <- RunPCA(ctecs_obj, features = VariableFeatures(object = ctecs_obj))
 ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10 )
 ```
-
+#Initial data exploration
 ```{r}
 VizDimLoadings(ctecs_obj, dims = 1:2, reduction = "pca")
 ```
 
-
-```{r} 
-#exploration of the primary sources of heterogeneity in a dataset
-DimHeatmap(ctecs_obj, dims = 1, cells = 1000, balanced = TRUE)
-```
 ```{r}
-#Find neighbors
-ctecs_obj <-FindNeighbors(ctecs_obj, dims= 1:10)
-ctecs_obj <-FindClusters(ctecs_obj, resolution= 0.5)
-
-#Run UMAP from clusters
-ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10)
-DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
-```
-
-```{r}
-saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/data/human-integrated-datasets-analysis.rds")
-```
-
-```{r}
-#install.packages('devtools')
-
-#head(x = all.markers)
-markers_cluster1 <- FindMarkers(object=ctecs_obj, ident.1 =1)
-head(x = markers_cluster1)
-```
-
-```{r}
-VlnPlot(ctecs_obj, features = c("HBG2","CDKN1C","LINC02605","ENSG00000289474","C3","CDKN1C"))
-
-```
-
-```{r}
-all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers.csv")
-View(all_markers)
-
-#ctecs_pos_markers <- FindAllMarkers(ctecs_obj, only.pos = TRUE)
-all_markers %>%
-    group_by(cluster) %>%
-    dplyr::filter(avg_log2FC > 1)%>%
-    slice_head(n=10) %>%
-    ungroup() -> top10
 top10
 top10_cluster0 <- subset(top10, cluster == "0")
 top10_cluster0$gene_name <-sub(".*\\.", "", top10_cluster0$gene)
@@ -103,8 +61,7 @@ top10_cluster0$gene_name <-sub(".*\\.", "", top10_cluster0$gene)
 top10_cluster0$gene_name
 #ctecs_obj$gene
 VlnPlot(ctecs_obj, features = top10_cluster0$gene_name, slot = "counts", log = TRUE)
-```
-```{r}
+
 top10_cluster1 <- subset(top10, cluster == "1")
 top10_cluster1$gene_name <-sub(".*\\.", "", top10_cluster1$gene)
 #class(ctecs_obj)
@@ -134,36 +91,123 @@ top10_cluster2$gene_name <-sub(".*\\.", "", top10_cluster2$gene)
 top10_cluster2$gene_name
 VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log = TRUE)
 ```
-```
-
 
 ```{r}
-for (cl in 0:13){
-  top10_clustercl <- subset(top10, cluster == cl)
-  top10_clustercl$gene_name <-sub(".*\\.", "", top10_clustercl$gene)
-  top10_clustercl$gene_name
-  VlnPlot(ctecs_obj, features = top10_cluster2$gene_name, , slot = "counts", log = TRUE)
-
-}
-```
-
-
-```{r}
-DoHeatmap(ctecs_obj, features = top10$gene) + NoLegend()
-```
-
-```{r}
-#Pan gene markers
+#Pan TEC gene markers
 pan_tec <- c("EPCAM", "FOXN1", "KRT8")
 #plot Multiple markers
-FeaturePlot(ctecs_object, 
-            features = c("PSMB11", "PRSS16", "AIRE", "CCL21"),
+FeaturePlot(ctecs_obj, 
+            features = pan_tec,
             ncol = 2,
             pt.size = 0.5)
+```
 
-
+#Look at UMAP of cTEC-specific markers from literature
+```{r}
 #cTEC-specific markers
-ctec_markers <- c("PSMB11", "PRSS16", "LY75", "CLDN3", "CLDN4", "IL7", "DLL4")
+ctecs_markers <- c("PSMB11", "PRSS16", "LY75", "IL7", "DLL4", "CXCL12", "CCL25", "LY6A", "CD83","CTSL")
+FeaturePlot(ctecs_obj, 
+            features = ctecs_markers,
+            ncol = 2,
+            pt.size = 0.5)
+```
+
+
+```{r} 
+#exploration of the primary sources of heterogeneity in a dataset
+DimHeatmap(ctecs_obj, dims = 1, cells = 1000, balanced = TRUE)
+```
+#Data Clustering & annotation for cTECs datasets
+```{r}
+#Find neighbors
+ctecs_obj <-FindNeighbors(ctecs_obj, dims= 1:10)
+ctecs_obj <-FindClusters(ctecs_obj, resolution= 0.5)
+ctecs_obj <- RunUMAP(ctecs_obj, dims = 1:10)
+DimPlot(ctecs_obj, reduction = "umap", label = TRUE)
+```
+
+```{r}
+saveRDS(ctecs_obj, file = "/Users/vo/projects/heterogeneity_ctec/data/human-integrated-datasets-analysis-upstream.rds")
+```
+
+#Implementing codes from hierarchy_fast.R & pbmc_3k_hierarchy_fast.R
+```{r}
+# Update all markers again csv
+all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers.csv") %>%
+# Update rownames to keep only part after "."
+  mutate(gene = sub(".*\\.", "", gene))  
+#rownames(all_markers) <- sub(".*\\.", "", rownames(all_markers))
+write.csv(all_markers, "/Users/vo/projects/heterogeneity_ctec/data/all_markers_updated.csv", row.names = TRUE)
+
+
+all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers_updated.csv")
+
+#ctecs_pos_markers <- FindAllMarkers(ctecs_obj, only.pos = TRUE)
+all_markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)%>%
+    slice_head(n=10) %>%
+    ungroup() -> top10
+top10$gene
+source('Hierachy_utilities.R')
+DoHeatmap(ctecs_obj, features = top10$gene)
+#GetHeatmapMatrix: to get the matrix used for plotting marker gene heatmap
+data_<-GetHeatmapMatrix(ctecs_obj,features = top10$gene)
+
+###Get a initial heatmap score corresponding to a flat data structure
+score<-HeatmapScore(ctecs_obj,data_,top10,levels(ctecs_obj))
+ctecs_obj$best_score<-score
+ctecs_obj_hie_list<-BuildHierarchicalMap_predefine(ctecs_obj)
+```
+
+###Hierarchical structure
+```{r}
+hierarchy_list = list()
+i = 2
+while(i <= length(ctecs_obj_hie_list)){
+  tmp_list = matrix(nrow = 0,ncol = length(levels(ctecs_obj_hie_list[[i]])))
+  for(j in seq_along(levels(ctecs_obj_hie_list[[i]]))){
+    print(j)
+    tmp_list[j] = levels(ctecs_obj_hie_list[[i]])[j]
+  }
+  print(tmp_list)
+  hierarchy_list = c(hierarchy_list,list(tmp_list))
+  i = i + 1
+}
+
+hierarchy_gene_list = hierarchy_list
+i = 2
+while(i <= length(ctecs_obj_hie_list)){
+  ctecs_obj.markers <- FindAllMarkers(pbmc_3k_hie_list[[i]], only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  top10 <- ctecs_obj.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+  for(j in seq_along(hierarchy_list[[i-1]])){
+    hierarchy_gene_list[[i-1]][[j]] = paste(top10$gene[top10$cluster==levels(ctecs_obj_hie_list[[i]])[[j]]],collapse = ";")
+  }
+  i = i+1
+}
+
+for(i in seq_along(hierarchy_list)){
+  for(j in seq_along(hierarchy_list[[i]])){
+    if(length(str_split_1(hierarchy_list[[i]][[j]],";"))==2){
+      hierarchy_list = c(hierarchy_list,str_split(hierarchy_list[[i]][[j]],";"))
+      hierarchy_gene_list = c(hierarchy_gene_list,str_split(hierarchy_list[[i]][[j]],";"))
+      ctecs_obj_sub <- subset(x = pbmc, idents = str_split_1(hierarchy_list[[i]][[j]],";"))
+      all.genes <- rownames(ctecs_obj_sub)
+      ctecs_obj_sub <- ScaleData(ctecs_obj_sub, features = all.genes)
+      ctecs_obj.markers <- FindAllMarkers(ctecs_obj_sub, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+      top10 <- ctecs_obj.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+      
+      hierarchy_gene_list[[length(hierarchy_gene_list)]][[1]]=paste(top10$gene[top10$cluster==levels(ctecs_obj_sub)[[1]]],collapse = ";")
+      hierarchy_gene_list[[length(hierarchy_gene_list)]][[2]]=paste(top10$gene[top10$cluster==levels(ctecs_obj_sub)[[2]]],collapse = ";")
+      
+      
+    }
+  }
+}
+
+###Please Modify the path to save the results
+write.table(as.data.frame(hierarchy_list),file="your_own_path\\hierarchy_list.csv", quote=F,sep=",",row.names=F,col.names = F)
+write.table(as.data.frame(hierarchy_gene_list),file="your_own_path\\hierarchy_gene_list.csv", quote=F,sep=",",row.names=F,col.names = F)
 
 ```
 
