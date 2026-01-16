@@ -71,8 +71,6 @@ toc()
 res = show_result_lmd(score_result)
 head(res$gene_table,10)
 
-
-
 ```
 
 
