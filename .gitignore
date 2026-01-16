@@ -1,9 +1,17 @@
 *
 !*/
+<<<<<<< HEAD
 !heterogeneity-ctecs.Rproj
+=======
+!heterogeneity_ctecs.Rproj
+>>>>>>> 7676b5c (analyses/localized-marker-detector-implementation.Rmd)
 !README.md
 !.gitignore
 !analyses/**
 !metadata/**
 !envs/**
+<<<<<<< HEAD
 .Rproj.user
+=======
+.Rproj.user
+>>>>>>> 7676b5c (analyses/localized-marker-detector-implementation.Rmd)
