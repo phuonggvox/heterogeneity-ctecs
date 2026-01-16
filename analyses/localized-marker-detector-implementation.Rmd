@@ -1,0 +1,78 @@
+---
+title: "localized-marker-detector-implementation"
+output: html_document
+---
+
+```{r}
+#load all libraries & packages
+#remotes::install_github("satijalab/seurat-wrappers", "seurat5", quiet = TRUE)
+library(Seurat)
+library(ggplot2)
+library(SeuratData)
+library(SeuratWrappers)
+library(patchwork)
+library(readr)
+library(dplyr)
+ctecs_obj <- readRDS(file = "/Users/vo/projects/heterogeneity_ctec/analyses/human-integrated-datasets-analysis-upstream.rds") 
+all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers_updated.csv")
+#install.packages("devtools")
+#devtools::install_github("KlugerLab/LocalizedMarkerDetector") 
+library("LocalizedMarkerDetector")
+library(tictoc)
+```
+
+#Extracting input data
+
+```{r}
+#Run Tsne
+ctecs_obj <- RunTSNE(object = ctecs_obj, dims.use = 1:43, seed.use = 10, perplexity=30)
+
+#### Prepare data
+DefaultAssay(ctecs_obj) <- "RNA"
+#convert Assay5 object to a v3 Assay object
+ctecs_obj[["RNA"]] <- as(ctecs_obj[["RNA"]], "Assay")
+n_dim = dim(ctecs_obj@reductions$pca@cell.embeddings)[2]
+feature_space = as.matrix(ctecs_obj@reductions$pca@cell.embeddings[,1:n_dim])
+visual_space = data.frame(ctecs_obj@reductions$tsne@cell.embeddings)
+dat = as.matrix(ctecs_obj[[DefaultAssay(ctecs_obj)]]@data)
+cell_label = ctecs_obj@meta.data$celltype_level_3
+```
+
+#Processing input data
+Processing dat matrix: retain only genes detected in more than 10 cells and less than 50% of cells. Detected genes: expression level is greater than median expression level of that cell
+```{r}
+Gene_detected_count <- apply(dat > apply(dat,2,median),1,sum)
+selected_genes = (Gene_detected_count >= 10) & (Gene_detected_count <= ncol(dat) * 0.5)
+dat = dat[selected_genes,,drop = FALSE]
+```
+
+#Running LMD (one step)
+```{r}
+tic()
+score_result = LMD(dat, feature_space, knn = 5)
+toc()
+
+res = show_result_lmd(score_result)
+head(res$gene_table,10)
+
+```
+
+```{r}
+install.packages("biclust", dependencies = TRUE)
+cg_output = CoarseGrain(feature_space, expression = dat, graph.affinity = W, N = 1000)
+W_cg = cg_output$graph
+dat_cg = cg_output$expression
+
+tic()
+score_result_cg = LMD(dat_cg, max_time = 2^20, graph.affinity = as.matrix(W_cg))
+
+toc()
+
+res = show_result_lmd(score_result)
+head(res$gene_table,10)
+
+
+
+```
+
+

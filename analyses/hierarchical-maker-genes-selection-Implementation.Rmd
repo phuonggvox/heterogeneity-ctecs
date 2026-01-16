@@ -1,0 +1,102 @@
+---
+title: "hierarchical-maker-genes-selection-Implementation"
+output: html_document
+---
+```{r}
+# Load required libraries
+library(Seurat)
+library(ggplot2)
+library(SeuratData)
+library(readr)
+library(dplyr)
+#install.packages("PTXQC")
+library(reticulate)
+#devtools::install_github("jokergoo/ComplexHeatmap")
+install.packages('devtools')
+devtools::install_github('immunogenomics/presto')
+
+ctecs_obj <- readRDS(file = "/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/analyses/human-integrated-datasets-analysis-upstream.rds")
+all_markers <- read_csv("/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/all_markers_updated.csv")
+```
+
+#Implementing codes from hierarchy_fast.R & pbmc_3k_hierarchy_fast.R
+```{r}
+
+#all_markers <- read_csv("/Users/vo/projects/heterogeneity_ctec/data/all_markers_updated.csv")
+#ctecs_pos_markers <- FindAllMarkers(ctecs_obj, only.pos = TRUE)
+all_markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)%>%
+    slice_head(n=10) %>%
+    ungroup() -> top10
+top10$gene
+source('/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/Hierachy_utilities.R')
+DoHeatmap(ctecs_obj, features = top10$gene)
+#GetHeatmapMatrix: to get the matrix used for plotting marker gene heatmap
+data_<-GetHeatmapMatrix(ctecs_obj,features = top10$gene)
+
+###Get a initial heatmap score corresponding to a flat data structure
+score<-HeatmapScore(ctecs_obj,data_,top10,levels(ctecs_obj))
+ctecs_obj$best_score<-score
+ctecs_obj_hie_list<-BuildHierarchicalMap_predefine(ctecs_obj)
+```
+###Hierarchical structure
+```{r}
+hierarchy_list = list()
+i = 2
+while(i <= length(ctecs_obj_hie_list)){
+  tmp_list = matrix(nrow = 0,ncol = length(levels(ctecs_obj_hie_list[[i]])))
+  for(j in seq_along(levels(ctecs_obj_hie_list[[i]]))){
+    print(j)
+    tmp_list[j] = levels(ctecs_obj_hie_list[[i]])[j]
+  }
+  print(tmp_list)
+  hierarchy_list = c(hierarchy_list,list(tmp_list))
+  i = i + 1
+}
+
+hierarchy_gene_list = hierarchy_list
+i = 2
+while(i <= length(ctecs_obj_hie_list)){
+  ctecs_obj.markers <- FindAllMarkers(ctecs_obj_hie_list[[i]], only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  top10 <- ctecs_obj.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+  for(j in seq_along(hierarchy_list[[i-1]])){
+    hierarchy_gene_list[[i-1]][[j]] = paste(top10$gene[top10$cluster==levels(ctecs_obj_hie_list[[i]])[[j]]],collapse = ";")
+  }
+  i = i+1
+}
+
+for(i in seq_along(hierarchy_list)){
+  for(j in seq_along(hierarchy_list[[i]])){
+    if(length(str_split_1(hierarchy_list[[i]][[j]],";"))==2){
+      hierarchy_list = c(hierarchy_list,str_split(hierarchy_list[[i]][[j]],";"))
+      hierarchy_gene_list = c(hierarchy_gene_list,str_split(hierarchy_list[[i]][[j]],";"))
+      ctecs_obj_sub <- subset(x = ctecs_obj, idents = str_split_1(hierarchy_list[[i]][[j]],";"))
+      all.genes <- rownames(ctecs_obj_sub)
+      ctecs_obj_sub <- ScaleData(ctecs_obj_sub, features = all.genes)
+      ctecs_obj.markers <- FindAllMarkers(ctecs_obj_sub, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+      top10 <- ctecs_obj.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+      
+      hierarchy_gene_list[[length(hierarchy_gene_list)]][[1]]=paste(top10$gene[top10$cluster==levels(ctecs_obj_sub)[[1]]],collapse = ";")
+      hierarchy_gene_list[[length(hierarchy_gene_list)]][[2]]=paste(top10$gene[top10$cluster==levels(ctecs_obj_sub)[[2]]],collapse = ";")
+      
+      
+    }
+  }
+}
+###Please Modify the path to save the results
+write.table(as.data.frame(hierarchy_list),file="/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/
+hierarchy_list.csv", quote=F,sep=",",row.names=F,col.names = F)
+write.table(as.data.frame(hierarchy_gene_list),file="/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/hierarchy_gene_list.csv", quote=F,sep=",",row.names=F,col.names = F)
+```
+
+
+```{r}
+# Update all markers again csv
+all_markers <- read_csv("/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/data/all_markers.csv") %>%
+# Update rownames to keep only part after "."
+  mutate(gene = sub(".*\\.", "", gene))  
+#rownames(all_markers) <- sub(".*\\.", "", rownames(all_markers))
+write.csv(all_markers, "/grid/wsbs/home_norepl/vo/heterogeneity-ctecs/data/all_markers_updated.csv", row.names = TRUE)
+```
+
